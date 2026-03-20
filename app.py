@@ -83,6 +83,12 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+    /* 📱 모바일 한국어 텍스트 줄바꿈 및 가독성 최적화 */
+    .stMarkdown p, .stMarkdown li, .stMarkdown span {
+        word-break: keep-all !important; /* 단어가 중간에 안 끊기고 통째로 내려가게 함 */
+        overflow-wrap: break-word !important;
+        line-height: 1.8 !important; /* 줄 간격을 넓혀서 모바일에서 읽기 편하게 */
+    }
     textarea {
         font-size: 16px !important;
         background: #ffffff !important;
