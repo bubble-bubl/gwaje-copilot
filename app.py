@@ -176,16 +176,3 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True,
 )
-```
-
----
-
-## 4단계 — Streamlit Cloud Secrets 확인
-```
-share.streamlit.io
-→ 앱 클릭 → ⋮ → Settings → Secrets
-→ 아래 내용 정확히 입력되어 있는지 확인
-
-GEMINI_API_KEY = "본인_Gemini_키"
-SUPABASE_URL = "https://oauupmldwxnerevhibvi.supabase.co"
-SUPABASE_KEY = "본인_Publishable_키"
