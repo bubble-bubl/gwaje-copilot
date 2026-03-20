@@ -6,10 +6,9 @@ import pandas as pd
 from datetime import datetime
 
 # ── 설정 및 로깅 기능 ───────────────────────────────────────────
-LOG_FILE = "usage_log.csv" # 간단한 로깅용 CSV 파일명
+LOG_FILE = "usage_log.csv"
 
 def log_data(input_text, output_text):
-    """유저 입력과 AI 출력을 CSV에 기록합니다. (데이터 수집용)"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     new_data = pd.DataFrame({
         'timestamp': [timestamp],
@@ -17,18 +16,19 @@ def log_data(input_text, output_text):
         'output': [output_text]
     })
     
-    # 파일이 없으면 헤더 포함 저장, 있으면 모드 'a' (append)로 저장
     if not os.path.exists(LOG_FILE):
         new_data.to_csv(LOG_FILE, index=False, mode='w', encoding='utf-8-sig')
     else:
         new_data.to_csv(LOG_FILE, index=False, mode='a', header=False, encoding='utf-8-sig')
 
+# 💡 1. layout을 "centered"로 변경 (PC에서 중앙에 예쁘게 모임)
 st.set_page_config(
     page_title="과제 공지 분석기",
     page_icon="📋",
-    layout="wide",
+    layout="centered", 
 )
 
+# 💡 2. 억지로 확대하던 zoom 관련 CSS 삭제 및 최적화
 st.markdown("""
 <style>
     /* 상단 툴바 숨기기 */
@@ -41,49 +41,28 @@ st.markdown("""
         background: linear-gradient(135deg, #f0f2f8 0%, #e4e8f0 100%);
     }
 
-    /* 전체 컨텐츠 확대 - 이게 핵심 */
-    section[data-testid="stMain"] > div {
-        zoom: 1.5;
+    /* 다크모드 충돌 방지: 글자색 강제 고정 */
+    p, li, h1, h2, h3, h4, h5, h6, label, div[data-testid="stSpinner"] * {
+        color: #1a1a2e !important;
     }
 
-    /* 반응형 zoom */
-    @media (max-width: 1280px) {
-        section[data-testid="stMain"] > div { zoom: 1.3; }
-    }
-    @media (max-width: 1024px) {
-        section[data-testid="stMain"] > div { zoom: 1.15; }
-    }
-    @media (max-width: 768px) {
-        section[data-testid="stMain"] > div { zoom: 1.0; }
-    }
-    
-    /* 입력 컨테이너 여백 */
-    .block-container {
-        padding: 2rem 4% 3rem 4% !important;
-        max-width: 100% !important;
-    }
-
-    /* 입력창 스타일 */
+    /* 텍스트 입력창 스타일 */
     textarea {
-        font-size: 18px !important;
+        font-size: 16px !important;
         color: #1a1a1a !important;
         background: #ffffff !important;
-        line-height: 1.8 !important;
+        line-height: 1.6 !important;
         border-radius: 12px !important;
         border: 1px solid #dde1f0 !important;
-    }
-    textarea::placeholder {
-        color: #bbbbbb !important;
-        font-size: 16px !important;
     }
 
     /* 버튼 스타일 */
     div.stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: white !important;
-        font-size: 22px !important;
+        font-size: 18px !important;
         font-weight: 800 !important;
-        padding: 1.1rem 2rem !important;
+        padding: 0.8rem 2rem !important;
         border: none !important;
         border-radius: 14px !important;
         box-shadow: 0 6px 20px rgba(102,126,234,0.4) !important;
@@ -101,17 +80,14 @@ st.markdown("""
         border: 1px solid #ffe082;
         border-radius: 12px;
         padding: 1rem 1.4rem;
-        font-size: 16px;
+        font-size: 14px;
         margin-bottom: 1.2rem;
     }
     .warn-box * { color: #795548 !important; }
-            
-    /* 다크모드 충돌 방지: 스피너, 제목, 본문 텍스트 색상 강제 고정 */
-    p, li, h1, h2, h3, h4, h5, h6, label, div[data-testid="stSpinner"] * {
-        color: #1a1a2e !important;
-    }
 </style>
 """, unsafe_allow_html=True)
+
+# (이 아래부터는 기존 GEMINI_API_KEY 선언 등등 똑같이 유지)
 
 # ── API 키 & 시스템 프롬프트 ─────────────────────────────────
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
