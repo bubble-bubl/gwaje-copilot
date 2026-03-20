@@ -2,24 +2,35 @@ import streamlit as st
 from google import genai
 from google.genai import types
 import os
-import pandas as pd
 from datetime import datetime
+# 💡 [추가] CSV용 pandas를 지우고 supabase 클라이언트를 가져왔어.
+from supabase import create_client, Client
 
-# ── 설정 및 로깅 기능 ───────────────────────────────────────────
-LOG_FILE = "usage_log.csv"
+# ── 설정 및 Supabase 연동 기능 ───────────────────────────────────────────
+# 💡 [중요] 배포 시 Streamlit Cloud의 Advanced Settings (Secrets)에서 값을 가져오도록 설정
+SUPABASE_URL = os.environ.get("SUPABASE_URL", st.secrets.get("SUPABASE_URL", ""))
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", st.secrets.get("SUPABASE_KEY", ""))
 
-def log_data(input_text, output_text):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_data = pd.DataFrame({
-        'timestamp': [timestamp],
-        'input': [input_text],
-        'output': [output_text]
-    })
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def log_data_to_supabase(input_text, output_text):
+    """유저 입력과 AI 출력을 Supabase DB에 실시간으로 기록합니다."""
+    if not supabase:
+        print("Supabase 연결 안 됨: DB에 기록하지 않습니다.")
+        return
+
+    # 💡 'usage_logs'라는 이름의 테이블에 들어갈 데이터 (id랑 시간은 Supabase가 알아서 넣음)
+    data = {
+        'input': input_text,
+        'output': output_text
+    }
     
-    if not os.path.exists(LOG_FILE):
-        new_data.to_csv(LOG_FILE, index=False, mode='w', encoding='utf-8-sig')
-    else:
-        new_data.to_csv(LOG_FILE, index=False, mode='a', header=False, encoding='utf-8-sig')
+    try:
+        supabase.table('usage_logs').insert(data).execute()
+    except Exception as e:
+        print(f"DB 기록 중 에러 발생: {e}")
 
 # 💡 1. layout을 "centered"로 변경 (PC에서 중앙에 예쁘게 모임)
 st.set_page_config(
@@ -87,12 +98,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# (이 아래부터는 기존 GEMINI_API_KEY 선언 등등 똑같이 유지)
-
 # ── API 키 & 시스템 프롬프트 ─────────────────────────────────
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-# 💡 마크다운 문법을 잘 지켜달라고 프롬프트를 조금 더 보강했어.
 SYSTEM_PROMPT = """당신은 한국 대학생 전용 과제 분석 AI입니다.
 
 [역할]
@@ -204,20 +212,17 @@ if analyze_clicked:
 
                 result_text = response.text
 
-                # 💡 [CEO 피드백 반영] 마크다운 버그 수정: HTML 억지 삽입 대신 st.markdown 사용
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # Streamlit의 container(border=True)를 써서 깔끔하게 박스로 감싸고 마크다운 렌더링
                 result_container = st.container(border=True)
                 with result_container:
                     st.markdown("### ✅ 분석 결과")
-                    st.markdown(result_text) # Gemini가 준 마크다운이 그대로 적용됨
+                    st.markdown(result_text)
 
-                # 💡 [CEO 피드백 반영] 데이터 수집용 로깅 추가
-                log_data(notice_text, result_text)
+                # 💡 [핵심] CSV 대신 Supabase에 데이터 쏘기
+                log_data_to_supabase(notice_text, result_text)
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                # 원본 텍스트 복사용 expander는 유지
                 with st.expander("📄 텍스트 원본 보기 / 복사"):
                     st.code(result_text, language=None)
 
