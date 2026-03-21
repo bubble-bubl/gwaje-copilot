@@ -7,6 +7,7 @@ import html
 import uuid
 import json
 import re
+from datetime import datetime
 
 # ── API 키 설정 ──────────────────────────────────────────────
 try:
@@ -58,6 +59,125 @@ def get_recent_logs(limit=5):
     except Exception as e:
         print(f"최근 기록 조회 오류: {e}")
         return []
+
+def format_kst_datetime(dt_str):
+    if not dt_str:
+        return "-"
+
+    try:
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt.astimezone().strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return dt_str
+    
+def build_prompt_pack(summary, due_date, tasks, deliverables, warnings):
+    tasks_text = "\n".join([f"- {x}" for x in tasks]) if tasks else "- 공지 확인 필요"
+    deliverables_text = "\n".join([f"- {x}" for x in deliverables]) if deliverables else "- 공지 확인 필요"
+    warnings_text = "\n".join([f"- {x}" for x in warnings]) if warnings else "- 공지 확인 필요"
+
+    detail_prompt = f"""아래 대학 과제 공지를 바탕으로 내가 실제로 해야 할 일을 초보 대학생도 이해할 수 있게 자세히 설명해줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 이 과제의 목적
+2. 내가 실제로 해야 할 일 순서
+3. 제출 전에 체크할 것
+4. 실수하기 쉬운 부분
+"""
+
+    report_prompt = f"""아래 과제 공지를 바탕으로 보고서/과제 초안을 준비하려고 해.
+교수 공지 내용을 반영해서 실전적으로 도와줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 과제 수행 순서
+2. 보고서 또는 과제 결과물의 추천 목차
+3. 각 목차에 들어갈 핵심 내용
+4. 지금 바로 시작할 수 있는 초안
+"""
+
+    presentation_prompt = f"""아래 대학 과제 공지를 바탕으로 발표 준비를 도와줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 발표 준비 순서
+2. PPT 구성안
+3. 발표 대본 개요
+4. 발표 때 강조해야 할 핵심 포인트
+"""
+
+    team_prompt = f"""아래 대학 과제 공지를 바탕으로 팀플 역할분담안을 짜줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 팀플 진행 순서
+2. 역할 분담안
+3. 팀원별 할 일 예시
+4. 마감 전까지 일정표 초안
+"""
+
+    return {
+        "자세한 설명용": detail_prompt,
+        "보고서/과제 초안용": report_prompt,
+        "발표 준비용": presentation_prompt,
+        "팀플 역할분담용": team_prompt,
+    }
 
 
 # ── 시스템 프롬프트 ──────────────────────────────────────────
@@ -182,6 +302,7 @@ def copy_block(value, height=220):
             setTimeout(() => this.innerText='복사하기', 1200);
         "
         style="
+            width: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -427,6 +548,7 @@ if st.button("🔍 분석하기", use_container_width=True):
 
                     ai_prompt = get_value(parsed, "ai_prompt")
                     calendar_text = get_value(parsed, "calendar_text")
+                    prompt_pack = build_prompt_pack(summary, due_date, tasks, deliverables, warnings)
 
                     st.markdown("<br>", unsafe_allow_html=True)
                     st.markdown("## ✅ 분석 결과")
@@ -459,7 +581,13 @@ if st.button("🔍 분석하기", use_container_width=True):
                             st.markdown("- 공지 확인 필요")
 
                     with st.expander("🤖 AI용 프롬프트", expanded=False):
-                        copy_block(ai_prompt, height=320)
+                        prompt_type = st.selectbox(
+                            "프롬프트 종류 선택",
+                            list(prompt_pack.keys()),
+                            key="prompt_type_select"
+                        )
+
+                        copy_block(prompt_pack[prompt_type], height=320)
 
                     with st.expander("🗓️ 일정 등록용 문구", expanded=False):
                         copy_block(calendar_text, height=120)
@@ -487,7 +615,7 @@ if not recent_logs:
 else:
     for idx, row in enumerate(recent_logs, start=1):
         parsed = row.get("parsed_json") or {}
-        created_at = row.get("created_at", "")
+        created_at = format_kst_datetime(row.get("created_at", ""))
         summary = parsed.get("summary", "요약 없음")
         due_date = parsed.get("due_date", "공지 확인 필요")
 
