@@ -3,8 +3,6 @@ from google import genai
 from google.genai import types
 from supabase import create_client
 import os
-import html
-import uuid
 import json
 import re
 from datetime import datetime
@@ -279,59 +277,133 @@ def get_value(data, key, default="공지 확인 필요"):
     return value if value else default
 
 
-def copy_block(value, height=220):
+def read_only_box(value, height=220, key_suffix="default"):
     text_value = value if value else "공지 확인 필요"
-    element_id = f"copy_area_{uuid.uuid4().hex}"
-    escaped_value = html.escape(text_value)
 
-    st.markdown(
-        f"""
-        <div style="margin-bottom: 8px;">
-            <textarea id="{element_id}"
-                style="
-                    width: 100%;
-                    height: {height}px;
-                    padding: 14px;
-                    font-size: 15px;
-                    line-height: 1.6;
-                    color: #1a1a2e;
-                    background: #ffffff;
-                    border: 1px solid #d9dce8;
-                    border-radius: 12px;
-                    resize: vertical;
-                    box-sizing: border-box;
-                "
-                readonly>{escaped_value}</textarea>
-        </div>
-
-        <button onclick="
-            const text = document.getElementById('{element_id}').value;
-            navigator.clipboard.writeText(text).then(() => {{
-                this.innerText='복사 완료';
-                setTimeout(() => this.innerText='복사하기', 1200);
-            }}).catch(() => {{
-                this.innerText='복사 실패';
-                setTimeout(() => this.innerText='복사하기', 1200);
-            }});
-        "
-        style="
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-bottom: 8px;
-        ">
-            복사하기
-        </button>
-        """,
-        unsafe_allow_html=True
+    st.text_area(
+        "내용",
+        value=text_value,
+        height=height,
+        disabled=False,
+        label_visibility="collapsed",
+        key=f"readonly_box_{key_suffix}"
     )
 
+def build_prompt_pack(summary, due_date, tasks, deliverables, warnings):
+    tasks_text = "\n".join([f"- {x}" for x in tasks]) if tasks else "- 공지 확인 필요"
+    deliverables_text = "\n".join([f"- {x}" for x in deliverables]) if deliverables else "- 공지 확인 필요"
+    warnings_text = "\n".join([f"- {x}" for x in warnings]) if warnings else "- 공지 확인 필요"
+
+    detail_prompt = f"""너는 대학 과제를 처음 해보는 학생에게 설명해주는 조교 역할이다.
+
+아래 과제 공지를 바탕으로 내가 실제로 무엇을 해야 하는지 아주 쉽게 설명해줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 이 과제가 뭔지 쉽게 설명
+2. 내가 해야 할 일 순서대로 정리
+3. 제출 직전 체크리스트
+4. 실수하기 쉬운 부분
+"""
+
+    report_prompt = f"""너는 대학 과제 작성 코치를 맡은 AI다.
+
+아래 과제 공지를 바탕으로 보고서나 과제 초안을 바로 시작할 수 있게 도와줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 과제 수행 순서
+2. 추천 목차
+3. 각 목차에 들어갈 핵심 내용
+4. 바로 제출 초안으로 이어질 수 있는 예시 문단
+"""
+
+    presentation_prompt = f"""너는 대학 발표 준비를 도와주는 발표 코치 AI다.
+
+아래 과제 공지를 바탕으로 발표 준비에 필요한 내용을 정리해줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 발표 준비 순서
+2. PPT 슬라이드 구성안
+3. 발표 대본 개요
+4. 발표 때 강조할 핵심 포인트
+"""
+
+    team_prompt = f"""너는 대학 팀플 진행을 관리해주는 팀플 매니저 AI다.
+
+아래 과제 공지를 바탕으로 팀플 역할분담과 일정표 초안을 짜줘.
+
+[공지 핵심 요약]
+{summary}
+
+[마감일]
+{due_date}
+
+[해야 할 일]
+{tasks_text}
+
+[제출물]
+{deliverables_text}
+
+[주의사항]
+{warnings_text}
+
+다음 형식으로 답해줘.
+1. 팀플 진행 순서
+2. 역할 분담안
+3. 팀원별 할 일 예시
+4. 마감 전까지 일정표 초안
+"""
+
+    return {
+        "자세한 설명용": detail_prompt,
+        "보고서/과제 초안용": report_prompt,
+        "발표 준비용": presentation_prompt,
+        "팀플 역할분담용": team_prompt,
+    }   
 
 # ── 페이지 설정 ──────────────────────────────────────────────
 st.set_page_config(
@@ -628,10 +700,12 @@ if st.session_state.analysis_result:
             list(prompt_pack.keys()),
             key="prompt_type_select"
         )
-        copy_block(prompt_pack[prompt_type], height=320)
+
+        selected_prompt = prompt_pack[prompt_type]
+        read_only_box(selected_prompt, height=320, key_suffix=prompt_type)
 
     with st.expander("🗓️ 일정 등록용 문구", expanded=False):
-        copy_block(calendar_text, height=120)
+        read_only_box(calendar_text, height=120, key_suffix="calendar")
 
     with st.expander("📄 원본 JSON 보기", expanded=False):
         st.code(json.dumps(raw_json, ensure_ascii=False, indent=2), language="json")
