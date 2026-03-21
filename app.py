@@ -3,7 +3,8 @@ from google import genai
 from google.genai import types
 from supabase import create_client
 import os
-import base64
+import html
+import uuid
 import json
 import re
 
@@ -40,6 +41,23 @@ def log_data(input_text, output_text, input_type="text", parsed_json=None):
             supabase.table("usage_logs").insert(payload).execute()
         except Exception as e:
             print(f"DB 오류: {e}")
+
+def get_recent_logs(limit=5):
+    if not supabase:
+        return []
+
+    try:
+        response = (
+            supabase.table("usage_logs")
+            .select("id, created_at, parsed_json")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return response.data if response.data else []
+    except Exception as e:
+        print(f"최근 기록 조회 오류: {e}")
+        return []
 
 
 # ── 시스템 프롬프트 ──────────────────────────────────────────
@@ -132,20 +150,54 @@ def get_value(data, key, default="공지 확인 필요"):
         return value.strip() if value.strip() else default
     return value if value else default
 
+def copy_block(value, height=220):
+    text_value = value if value else "공지 확인 필요"
+    element_id = f"copy_area_{uuid.uuid4().hex}"
 
-def render_list_section(title, items, empty_text="공지 확인 필요"):
-    st.markdown(f"### {title}")
-    if items:
-        for item in items:
-            st.markdown(f"- {item}")
-    else:
-        st.markdown(f"- {empty_text}")
+    escaped_value = html.escape(text_value)
 
+    st.markdown(
+        f"""
+        <div style="margin-bottom: 8px;">
+            <textarea id="{element_id}"
+                style="
+                    width: 100%;
+                    height: {height}px;
+                    padding: 14px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #1a1a2e;
+                    background: #ffffff;
+                    border: 1px solid #d9dce8;
+                    border-radius: 12px;
+                    resize: vertical;
+                    box-sizing: border-box;
+                "
+                readonly>{escaped_value}</textarea>
+        </div>
 
-def copy_block(label, value):
-    st.markdown(f"### {label}")
-    st.code(value if value else "공지 확인 필요", language=None)
-
+        <button onclick="
+            navigator.clipboard.writeText(document.getElementById('{element_id}').value);
+            this.innerText='복사 완료';
+            setTimeout(() => this.innerText='복사하기', 1200);
+        "
+        style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 8px;
+            width: 100%;
+        ">
+            복사하기
+        </button>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ── 페이지 설정 ──────────────────────────────────────────────
 st.set_page_config(
@@ -246,6 +298,14 @@ st.markdown("""
     div[data-testid="stExpander"] details summary p {
         color: #1a1a2e !important;
         font-weight: 700 !important;
+    }
+
+    .stTextArea textarea {
+        font-size: 15px !important;
+        line-height: 1.6 !important;
+        background: #ffffff !important;
+        color: #1a1a2e !important;
+        border-radius: 12px !important;
     }
 
     @media (max-width: 768px) {
@@ -399,10 +459,10 @@ if st.button("🔍 분석하기", use_container_width=True):
                             st.markdown("- 공지 확인 필요")
 
                     with st.expander("🤖 AI용 프롬프트", expanded=False):
-                        st.code(ai_prompt if ai_prompt else "공지 확인 필요", language=None)
+                        copy_block(ai_prompt, height=320)
 
                     with st.expander("🗓️ 일정 등록용 문구", expanded=False):
-                        st.code(calendar_text if calendar_text else "공지 확인 필요", language=None)
+                        copy_block(calendar_text, height=120)
 
                     log_data(
                         log_input,
@@ -416,6 +476,37 @@ if st.button("🔍 분석하기", use_container_width=True):
 
             except Exception as e:
                 st.error(f"오류: {e}")
+
+st.markdown("---")
+st.markdown("## 🕘 최근 분석 보기")
+
+recent_logs = get_recent_logs(limit=5)
+
+if not recent_logs:
+    st.caption("아직 저장된 분석 기록이 없습니다.")
+else:
+    for idx, row in enumerate(recent_logs, start=1):
+        parsed = row.get("parsed_json") or {}
+        created_at = row.get("created_at", "")
+        summary = parsed.get("summary", "요약 없음")
+        due_date = parsed.get("due_date", "공지 확인 필요")
+
+        title_preview = summary.strip()
+        if len(title_preview) > 60:
+            title_preview = title_preview[:60] + "..."
+
+        with st.expander(f"{idx}. {title_preview}"):
+            st.markdown(f"**저장 시각:** {created_at}")
+            st.markdown(f"**마감일:** {due_date}")
+
+            st.markdown("### 핵심 요약")
+            st.markdown(summary)
+
+            with st.expander("원본 JSON 보기"):
+                st.code(
+                    json.dumps(parsed, ensure_ascii=False, indent=2),
+                    language="json"
+                )
 
 # ── 푸터 ────────────────────────────────────────────────────
 st.markdown("---")
