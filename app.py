@@ -96,29 +96,31 @@ SYSTEM_PROMPT = """당신은 한국 대학생 전용 '과제 공지 워크플로
 
 # ── 유틸 함수 ────────────────────────────────────────────────
 def safe_json_parse(text: str):
-    """
-    Gemini가 드물게 코드블록이나 앞뒤 설명을 섞을 수 있으므로
-    최대한 JSON 부분만 안전하게 추출한다.
-    """
     if not text:
         return None
 
     cleaned = text.strip()
 
-    # ```json ... ``` 제거
-    cleaned = re.sub(r"^```json\s*", "", cleaned)
+    # 코드블록 제거
+    cleaned = re.sub(r"^```json\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"^```\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
 
-    # 첫 { 부터 마지막 } 까지 잘라보기
+    # 앞뒤 설명 제거
     start = cleaned.find("{")
     end = cleaned.rfind("}")
     if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
 
+    # 스마트 따옴표 치환
+    cleaned = cleaned.replace("“", "\"").replace("”", "\"")
+    cleaned = cleaned.replace("‘", "'").replace("’", "'")
+
     try:
         return json.loads(cleaned)
-    except Exception:
+    except Exception as e:
+        print("JSON 파싱 실패 원문:", cleaned)
+        print("JSON 파싱 에러:", e)
         return None
 
 
