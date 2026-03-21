@@ -9,15 +9,17 @@ import json
 import re
 from datetime import datetime
 
+
 # ── API 키 설정 ──────────────────────────────────────────────
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-except:
+except Exception:
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
     SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
     SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
 
 # ── Supabase 연결 ────────────────────────────────────────────
 supabase = None
@@ -25,6 +27,12 @@ if SUPABASE_URL and SUPABASE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+# ── 세션 상태 초기화 ─────────────────────────────────────────
+if "analysis_result" not in st.session_state:
+    st.session_state.analysis_result = None
+
+
+# ── DB 함수 ─────────────────────────────────────────────────
 def log_data(input_text, output_text, input_type="text", parsed_json=None):
     if supabase:
         try:
@@ -34,14 +42,13 @@ def log_data(input_text, output_text, input_type="text", parsed_json=None):
                 "input_type": input_type,
             }
 
-            # usage_logs 테이블에 parsed_json 컬럼이 없을 수도 있으므로
-            # 일단 안전하게 optional 형태로만 시도
             if parsed_json is not None:
                 payload["parsed_json"] = parsed_json
 
             supabase.table("usage_logs").insert(payload).execute()
         except Exception as e:
             print(f"DB 오류: {e}")
+
 
 def get_recent_logs(limit=5):
     if not supabase:
@@ -60,6 +67,7 @@ def get_recent_logs(limit=5):
         print(f"최근 기록 조회 오류: {e}")
         return []
 
+
 def format_kst_datetime(dt_str):
     if not dt_str:
         return "-"
@@ -69,7 +77,9 @@ def format_kst_datetime(dt_str):
         return dt.astimezone().strftime("%Y-%m-%d %H:%M")
     except Exception:
         return dt_str
-    
+
+
+# ── 프롬프트 팩 생성 ─────────────────────────────────────────
 def build_prompt_pack(summary, due_date, tasks, deliverables, warnings):
     tasks_text = "\n".join([f"- {x}" for x in tasks]) if tasks else "- 공지 확인 필요"
     deliverables_text = "\n".join([f"- {x}" for x in deliverables]) if deliverables else "- 공지 확인 필요"
@@ -226,6 +236,7 @@ SYSTEM_PROMPT = """당신은 한국 대학생 전용 '과제 공지 워크플로
   "3월 28일 23:59 / 운영체제 과제 2 제출 / PDF 업로드"
 """
 
+
 # ── 유틸 함수 ────────────────────────────────────────────────
 def safe_json_parse(text: str):
     if not text:
@@ -233,18 +244,15 @@ def safe_json_parse(text: str):
 
     cleaned = text.strip()
 
-    # 코드블록 제거
     cleaned = re.sub(r"^```json\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"^```\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
 
-    # 앞뒤 설명 제거
     start = cleaned.find("{")
     end = cleaned.rfind("}")
     if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
 
-    # 스마트 따옴표 치환
     cleaned = cleaned.replace("“", "\"").replace("”", "\"")
     cleaned = cleaned.replace("‘", "'").replace("’", "'")
 
@@ -270,10 +278,10 @@ def get_value(data, key, default="공지 확인 필요"):
         return value.strip() if value.strip() else default
     return value if value else default
 
+
 def copy_block(value, height=220):
     text_value = value if value else "공지 확인 필요"
     element_id = f"copy_area_{uuid.uuid4().hex}"
-
     escaped_value = html.escape(text_value)
 
     st.markdown(
@@ -297,9 +305,14 @@ def copy_block(value, height=220):
         </div>
 
         <button onclick="
-            navigator.clipboard.writeText(document.getElementById('{element_id}').value);
-            this.innerText='복사 완료';
-            setTimeout(() => this.innerText='복사하기', 1200);
+            const text = document.getElementById('{element_id}').value;
+            navigator.clipboard.writeText(text).then(() => {{
+                this.innerText='복사 완료';
+                setTimeout(() => this.innerText='복사하기', 1200);
+            }}).catch(() => {{
+                this.innerText='복사 실패';
+                setTimeout(() => this.innerText='복사하기', 1200);
+            }});
         "
         style="
             width: 100%;
@@ -312,13 +325,13 @@ def copy_block(value, height=220):
             font-weight: 700;
             cursor: pointer;
             margin-bottom: 8px;
-            width: 100%;
         ">
             복사하기
         </button>
         """,
         unsafe_allow_html=True
     )
+
 
 # ── 페이지 설정 ──────────────────────────────────────────────
 st.set_page_config(
@@ -338,8 +351,9 @@ st.markdown("""
 
     .stTextArea textarea {
         font-size: 16px !important;
+        line-height: 1.6 !important;
         background: #ffffff !important;
-        color: #1a1a1a !important;
+        color: #1a1a2e !important;
         border-radius: 12px !important;
     }
 
@@ -391,15 +405,6 @@ st.markdown("""
         text-align: center;
     }
 
-    .section-card {
-        background: rgba(255,255,255,0.88);
-        border-radius: 18px;
-        padding: 18px 18px;
-        border: 1px solid rgba(102,126,234,0.12);
-        box-shadow: 0 4px 18px rgba(0,0,0,0.04);
-        margin-bottom: 14px;
-    }
-
     div[data-testid="stExpander"] details summary {
         color: #1a1a2e !important;
         background: white !important;
@@ -421,12 +426,18 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    .stTextArea textarea {
-        font-size: 15px !important;
-        line-height: 1.6 !important;
-        background: #ffffff !important;
+    div[data-baseweb="select"] > div {
+        background: white !important;
         color: #1a1a2e !important;
-        border-radius: 12px !important;
+    }
+
+    div[data-baseweb="select"] span {
+        color: #1a1a2e !important;
+    }
+
+    div[data-baseweb="popover"] * {
+        color: #1a1a2e !important;
+        background: white !important;
     }
 
     @media (max-width: 768px) {
@@ -485,7 +496,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── 버튼 ────────────────────────────────────────────────────
+# ── 분석 버튼 ────────────────────────────────────────────────
 if st.button("🔍 분석하기", use_container_width=True):
     if not GEMINI_API_KEY:
         st.error("API 키가 없습니다.")
@@ -498,7 +509,6 @@ if st.button("🔍 분석하기", use_container_width=True):
             try:
                 client = genai.Client(api_key=GEMINI_API_KEY)
 
-                # 이미지 입력 처리
                 if input_type == "📷 이미지로 업로드" and uploaded_image:
                     image_bytes = uploaded_image.read()
                     mime_type = uploaded_image.type
@@ -541,56 +551,22 @@ if st.button("🔍 분석하기", use_container_width=True):
                 else:
                     summary = get_value(parsed, "summary")
                     due_date = get_value(parsed, "due_date")
-
                     tasks = normalize_list(parsed.get("tasks"))
                     deliverables = normalize_list(parsed.get("deliverables"))
                     warnings = normalize_list(parsed.get("warnings"))
-
                     ai_prompt = get_value(parsed, "ai_prompt")
                     calendar_text = get_value(parsed, "calendar_text")
-                    prompt_pack = build_prompt_pack(summary, due_date, tasks, deliverables, warnings)
 
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown("## ✅ 분석 결과")
-
-                    with st.expander("📌 핵심 요약", expanded=True):
-                        st.markdown(summary)
-
-                    with st.expander("⏰ 마감일", expanded=False):
-                        st.markdown(due_date)
-
-                    with st.expander("✅ 해야 할 일", expanded=False):
-                        if tasks:
-                            for item in tasks:
-                                st.markdown(f"- {item}")
-                        else:
-                            st.markdown("- 공지 확인 필요")
-
-                    with st.expander("📦 제출물", expanded=False):
-                        if deliverables:
-                            for item in deliverables:
-                                st.markdown(f"- {item}")
-                        else:
-                            st.markdown("- 공지 확인 필요")
-
-                    with st.expander("⚠️ 주의사항", expanded=False):
-                        if warnings:
-                            for item in warnings:
-                                st.markdown(f"- {item}")
-                        else:
-                            st.markdown("- 공지 확인 필요")
-
-                    with st.expander("🤖 AI용 프롬프트", expanded=False):
-                        prompt_type = st.selectbox(
-                            "프롬프트 종류 선택",
-                            list(prompt_pack.keys()),
-                            key="prompt_type_select"
-                        )
-
-                        copy_block(prompt_pack[prompt_type], height=320)
-
-                    with st.expander("🗓️ 일정 등록용 문구", expanded=False):
-                        copy_block(calendar_text, height=120)
+                    st.session_state.analysis_result = {
+                        "summary": summary,
+                        "due_date": due_date,
+                        "tasks": tasks,
+                        "deliverables": deliverables,
+                        "warnings": warnings,
+                        "ai_prompt": ai_prompt,
+                        "calendar_text": calendar_text,
+                        "raw_json": parsed,
+                    }
 
                     log_data(
                         log_input,
@@ -599,12 +575,68 @@ if st.button("🔍 분석하기", use_container_width=True):
                         parsed_json=parsed
                     )
 
-                    with st.expander("📄 원본 JSON 보기"):
-                        st.code(json.dumps(parsed, ensure_ascii=False, indent=2), language="json")
-
             except Exception as e:
                 st.error(f"오류: {e}")
 
+# ── 결과 표시 (버튼 바깥) ─────────────────────────────────────
+if st.session_state.analysis_result:
+    result = st.session_state.analysis_result
+
+    summary = result["summary"]
+    due_date = result["due_date"]
+    tasks = result["tasks"]
+    deliverables = result["deliverables"]
+    warnings = result["warnings"]
+    ai_prompt = result["ai_prompt"]
+    calendar_text = result["calendar_text"]
+    raw_json = result["raw_json"]
+
+    prompt_pack = build_prompt_pack(summary, due_date, tasks, deliverables, warnings)
+
+    st.markdown("## ✅ 분석 결과")
+
+    with st.expander("📌 핵심 요약", expanded=True):
+        st.markdown(summary)
+
+    with st.expander("⏰ 마감일", expanded=False):
+        st.markdown(due_date)
+
+    with st.expander("✅ 해야 할 일", expanded=False):
+        if tasks:
+            for item in tasks:
+                st.markdown(f"- {item}")
+        else:
+            st.markdown("- 공지 확인 필요")
+
+    with st.expander("📦 제출물", expanded=False):
+        if deliverables:
+            for item in deliverables:
+                st.markdown(f"- {item}")
+        else:
+            st.markdown("- 공지 확인 필요")
+
+    with st.expander("⚠️ 주의사항", expanded=False):
+        if warnings:
+            for item in warnings:
+                st.markdown(f"- {item}")
+        else:
+            st.markdown("- 공지 확인 필요")
+
+    with st.expander("🤖 AI용 프롬프트", expanded=False):
+        prompt_type = st.selectbox(
+            "프롬프트 종류 선택",
+            list(prompt_pack.keys()),
+            key="prompt_type_select"
+        )
+        copy_block(prompt_pack[prompt_type], height=320)
+
+    with st.expander("🗓️ 일정 등록용 문구", expanded=False):
+        copy_block(calendar_text, height=120)
+
+    with st.expander("📄 원본 JSON 보기", expanded=False):
+        st.code(json.dumps(raw_json, ensure_ascii=False, indent=2), language="json")
+
+# ── 최근 분석 보기 ───────────────────────────────────────────
 st.markdown("---")
 st.markdown("## 🕘 최근 분석 보기")
 
