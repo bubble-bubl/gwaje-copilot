@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from google import genai
 from google.genai import types
 from supabase import create_client
@@ -285,57 +286,57 @@ def read_only_box(value, height=220, key_suffix="default"):
         text_value.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
+        .replace('"', "&quot;")
     )
 
-    st.markdown(
-        f"""
-        <div style="margin-top: 8px; margin-bottom: 8px;">
-            <textarea id="{text_id}"
-                style="
-                    width: 100%;
-                    height: {height}px;
-                    padding: 14px;
-                    font-size: 15px;
-                    line-height: 1.6;
-                    color: #1a1a2e;
-                    background: #ffffff;
-                    border: 1px solid #d9dce8;
-                    border-radius: 12px;
-                    resize: vertical;
-                    box-sizing: border-box;
-                ">{escaped}</textarea>
-        </div>
-
-        <button
-            onclick="
-                const text = document.getElementById('{text_id}').value;
-                navigator.clipboard.writeText(text).then(() => {{
-                    this.innerText = '복사 완료';
-                    setTimeout(() => this.innerText = '복사하기', 1200);
-                }}).catch(() => {{
-                    this.innerText = '복사 실패';
-                    setTimeout(() => this.innerText = '복사하기', 1200);
-                }});
-            "
+    html_code = f"""
+    <div style="margin-top: 8px; margin-bottom: 8px;">
+        <textarea id="{text_id}"
             style="
                 width: 100%;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                border-radius: 10px;
-                padding: 10px 16px;
-                font-size: 14px;
-                font-weight: 700;
-                cursor: pointer;
-                margin-top: 6px;
-                margin-bottom: 6px;
-            "
-        >
-            복사하기
-        </button>
-        """,
-        unsafe_allow_html=True
-    )
+                height: {height}px;
+                padding: 14px;
+                font-size: 15px;
+                line-height: 1.6;
+                color: #1a1a2e;
+                background: #ffffff;
+                border: 1px solid #d9dce8;
+                border-radius: 12px;
+                resize: vertical;
+                box-sizing: border-box;
+            ">{escaped}</textarea>
+    </div>
+
+    <button
+        onclick="
+            const text = document.getElementById('{text_id}').value;
+            navigator.clipboard.writeText(text).then(() => {{
+                this.innerText = '복사 완료';
+                setTimeout(() => this.innerText = '복사하기', 1200);
+            }}).catch(() => {{
+                this.innerText = '복사 실패';
+                setTimeout(() => this.innerText = '복사하기', 1200);
+            }});
+        "
+        style="
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 6px;
+            margin-bottom: 6px;
+        "
+    >
+        복사하기
+    </button>
+    """
+
+    components.html(html_code, height=height + 80, scrolling=False)
 
 def build_prompt_pack(summary, due_date, tasks, deliverables, warnings):
     tasks_text = "\n".join([f"- {x}" for x in tasks]) if tasks else "- 공지 확인 필요"
