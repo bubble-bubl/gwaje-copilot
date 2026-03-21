@@ -360,48 +360,54 @@ if st.button("🔍 분석하기", use_container_width=True):
                     st.markdown("<br>", unsafe_allow_html=True)
                     st.markdown("## ✅ 분석 결과")
 
-                    with st.container(border=True):
-                        st.markdown("### 📌 핵심 요약")
+                    with st.expander("📌 핵심 요약", expanded=True):
                         st.markdown(summary)
 
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        with st.container(border=True):
-                            st.markdown("### 🏷️ 과제명")
-                            st.markdown(assignment_name)
-                    with col2:
-                        with st.container(border=True):
-                            st.markdown("### ⏰ 마감일")
-                            st.markdown(due_date)
+                    with st.expander("🏷️ 과제명", expanded=False):
+                        st.markdown(assignment_name)
 
-                    with st.container(border=True):
-                        st.markdown("### 📤 제출 형식")
+                    with st.expander("⏰ 마감일", expanded=False):
+                        st.markdown(due_date)
+
+                    with st.expander("📤 제출 형식", expanded=False):
                         st.markdown(submission_format)
 
-                    with st.container(border=True):
-                        render_list_section("✅ 해야 할 일", tasks)
+                    with st.expander("✅ 해야 할 일", expanded=False):
+                        if tasks:
+                            for item in tasks:
+                                st.markdown(f"- {item}")
+                        else:
+                            st.markdown("- 공지 확인 필요")
 
-                    with st.container(border=True):
-                        render_list_section("📦 제출물", deliverables)
+                    with st.expander("📦 제출물", expanded=False):
+                        if deliverables:
+                            for item in deliverables:
+                                st.markdown(f"- {item}")
+                        else:
+                            st.markdown("- 공지 확인 필요")
 
-                    with st.container(border=True):
-                        render_list_section("🧰 준비물 / 참고 요소", materials)
+                    with st.expander("🧰 준비물 / 참고 요소", expanded=False):
+                        if materials:
+                            for item in materials:
+                                st.markdown(f"- {item}")
+                        else:
+                            st.markdown("- 공지 확인 필요")
 
-                    with st.container(border=True):
-                        render_list_section("⚠️ 주의사항", warnings)
+                    with st.expander("⚠️ 주의사항", expanded=False):
+                        if warnings:
+                            for item in warnings:
+                                st.markdown(f"- {item}")
+                        else:
+                            st.markdown("- 공지 확인 필요")
 
-                    st.markdown("## 🤖 AI용 프롬프트")
+                    with st.expander("🤖 ChatGPT용 프롬프트", expanded=True):
+                        st.code(gpt_prompt if gpt_prompt else "공지 확인 필요", language=None)
 
-                    tab1, tab2, tab3 = st.tabs(["ChatGPT용", "Gemini용", "일정 등록용"])
+                    with st.expander("🤖 Gemini용 프롬프트", expanded=False):
+                        st.code(gemini_prompt if gemini_prompt else "공지 확인 필요", language=None)
 
-                    with tab1:
-                        copy_block("ChatGPT에 바로 넣기", gpt_prompt)
-
-                    with tab2:
-                        copy_block("Gemini에 바로 넣기", gemini_prompt)
-
-                    with tab3:
-                        copy_block("캘린더/메모용 문구", calendar_text)
+                    with st.expander("🗓️ 일정 등록용 문구", expanded=False):
+                        st.code(calendar_text if calendar_text else "공지 확인 필요", language=None)
 
                     log_data(
                         log_input,
