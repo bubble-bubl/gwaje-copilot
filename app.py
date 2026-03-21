@@ -59,37 +59,31 @@ SYSTEM_PROMPT = """당신은 한국 대학생 전용 '과제 공지 워크플로
 
 [출력 JSON 형식]
 {
-  "summary": "공지 핵심을 2~3문장으로 요약",
-  "assignment_name": "과제명 또는 발표명",
+  "summary": "과제명까지 자연스럽게 포함한 공지 핵심 요약 2~3문장",
   "due_date": "마감일/제출일/발표일. 없으면 공지 확인 필요",
-  "submission_format": "제출 방식 또는 형식",
   "tasks": [
     "학생이 해야 할 행동 1",
     "학생이 해야 할 행동 2"
   ],
   "deliverables": [
     "제출해야 하는 결과물 1",
-    "제출해야 하는 결과물 2"
-  ],
-  "materials": [
-    "필요한 준비물 또는 참고 요소 1"
+    "제출해야 하는 결과물 2",
+    "제출 형식: PDF 업로드"
   ],
   "warnings": [
     "주의사항 1",
     "주의사항 2"
   ],
-  "gpt_prompt": "이 공지를 바탕으로 ChatGPT에 바로 넣을 자세한 프롬프트",
-  "gemini_prompt": "이 공지를 바탕으로 Gemini에 바로 넣을 짧고 실용적인 프롬프트",
+  "ai_prompt": "이 공지를 바탕으로 ChatGPT나 Gemini에 바로 넣을 실용적인 프롬프트",
   "calendar_text": "캘린더에 넣기 쉬운 한 줄 일정 문구"
 }
 
 [작성 규칙]
-- summary는 짧고 명확하게
+- summary에는 가능하면 과제명/발표명을 자연스럽게 포함하세요.
 - tasks는 실제 행동 단위로 작성
-- deliverables는 제출물 중심
+- deliverables에는 제출 형식이 있으면 함께 포함
 - warnings는 감점/형식/마감 관련 리스크 위주
-- gpt_prompt는 자세하고 구조적인 요청형
-- gemini_prompt는 짧고 빠르게 쓸 수 있게 작성
+- ai_prompt는 범용 AI에 바로 붙여넣기 좋게 작성
 - calendar_text는 다음 느낌으로 작성:
   "3월 28일 23:59 / 운영체제 과제 2 제출 / PDF 업로드"
 """
@@ -233,6 +227,27 @@ st.markdown("""
         margin-bottom: 14px;
     }
 
+    div[data-testid="stExpander"] details summary {
+        color: #1a1a2e !important;
+        background: white !important;
+        border-radius: 12px !important;
+    }
+
+    div[data-testid="stExpander"] details[open] summary {
+        color: #1a1a2e !important;
+        background: white !important;
+    }
+
+    div[data-testid="stExpander"] details summary:hover {
+        color: #1a1a2e !important;
+        background: #f8f9ff !important;
+    }
+
+    div[data-testid="stExpander"] details summary p {
+        color: #1a1a2e !important;
+        font-weight: 700 !important;
+    }
+
     @media (max-width: 768px) {
         .hero-box {
             padding: 28px 20px;
@@ -344,17 +359,13 @@ if st.button("🔍 분석하기", use_container_width=True):
                     log_data(log_input, raw_text, input_type=input_type_for_db)
                 else:
                     summary = get_value(parsed, "summary")
-                    assignment_name = get_value(parsed, "assignment_name")
                     due_date = get_value(parsed, "due_date")
-                    submission_format = get_value(parsed, "submission_format")
 
                     tasks = normalize_list(parsed.get("tasks"))
                     deliverables = normalize_list(parsed.get("deliverables"))
-                    materials = normalize_list(parsed.get("materials"))
                     warnings = normalize_list(parsed.get("warnings"))
 
-                    gpt_prompt = get_value(parsed, "gpt_prompt")
-                    gemini_prompt = get_value(parsed, "gemini_prompt")
+                    ai_prompt = get_value(parsed, "ai_prompt")
                     calendar_text = get_value(parsed, "calendar_text")
 
                     st.markdown("<br>", unsafe_allow_html=True)
@@ -363,14 +374,8 @@ if st.button("🔍 분석하기", use_container_width=True):
                     with st.expander("📌 핵심 요약", expanded=True):
                         st.markdown(summary)
 
-                    with st.expander("🏷️ 과제명", expanded=False):
-                        st.markdown(assignment_name)
-
                     with st.expander("⏰ 마감일", expanded=False):
                         st.markdown(due_date)
-
-                    with st.expander("📤 제출 형식", expanded=False):
-                        st.markdown(submission_format)
 
                     with st.expander("✅ 해야 할 일", expanded=False):
                         if tasks:
@@ -386,13 +391,6 @@ if st.button("🔍 분석하기", use_container_width=True):
                         else:
                             st.markdown("- 공지 확인 필요")
 
-                    with st.expander("🧰 준비물 / 참고 요소", expanded=False):
-                        if materials:
-                            for item in materials:
-                                st.markdown(f"- {item}")
-                        else:
-                            st.markdown("- 공지 확인 필요")
-
                     with st.expander("⚠️ 주의사항", expanded=False):
                         if warnings:
                             for item in warnings:
@@ -400,11 +398,8 @@ if st.button("🔍 분석하기", use_container_width=True):
                         else:
                             st.markdown("- 공지 확인 필요")
 
-                    with st.expander("🤖 ChatGPT용 프롬프트", expanded=True):
-                        st.code(gpt_prompt if gpt_prompt else "공지 확인 필요", language=None)
-
-                    with st.expander("🤖 Gemini용 프롬프트", expanded=False):
-                        st.code(gemini_prompt if gemini_prompt else "공지 확인 필요", language=None)
+                    with st.expander("🤖 AI용 프롬프트", expanded=False):
+                        st.code(ai_prompt if ai_prompt else "공지 확인 필요", language=None)
 
                     with st.expander("🗓️ 일정 등록용 문구", expanded=False):
                         st.code(calendar_text if calendar_text else "공지 확인 필요", language=None)
