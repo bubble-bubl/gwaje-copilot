@@ -217,9 +217,13 @@ st.markdown("""
     }
 
     .hero-sub {
-        font-size: 18px;
+        font-size: 17px;
         color: rgba(255,255,255,0.92);
         margin-top: 10px;
+        line-height: 1.5;
+        max-width: 720px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .section-card {
@@ -240,7 +244,9 @@ st.markdown("""
             font-size: 28px;
         }
         .hero-sub {
-            font-size: 15px;
+            font-size: 14px;
+            line-height: 1.45;
+            max-width: 260px;
         }
     }
 </style>
@@ -250,7 +256,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-box">
   <div class="hero-title">📋 과제 공지 분석기</div>
-  <div class="hero-sub">공지 내용을 행동 단위로 정리하고 AI 프롬프트와 일정 문구까지 만들어줍니다</div>
+  <div class="hero-sub">공지 핵심 정리 · AI 프롬프트 · 일정 문구까지 한 번에</div>
 </div>
 """, unsafe_allow_html=True)
 
