@@ -321,7 +321,8 @@ if st.button("🔍 분석하기", use_container_width=True):
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
                         max_output_tokens=2200,
-                        temperature=0.2,
+                        temperature=0.1,
+                        response_mime_type="application/json",
                     ),
                 )
 
