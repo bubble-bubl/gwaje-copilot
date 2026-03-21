@@ -279,14 +279,62 @@ def get_value(data, key, default="공지 확인 필요"):
 
 def read_only_box(value, height=220, key_suffix="default"):
     text_value = value if value else "공지 확인 필요"
+    text_id = f"text_{key_suffix}".replace(" ", "_").replace("/", "_")
 
-    st.text_area(
-        "내용",
-        value=text_value,
-        height=height,
-        disabled=False,
-        label_visibility="collapsed",
-        key=f"readonly_box_{key_suffix}"
+    escaped = (
+        text_value.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+    st.markdown(
+        f"""
+        <div style="margin-top: 8px; margin-bottom: 8px;">
+            <textarea id="{text_id}"
+                style="
+                    width: 100%;
+                    height: {height}px;
+                    padding: 14px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #1a1a2e;
+                    background: #ffffff;
+                    border: 1px solid #d9dce8;
+                    border-radius: 12px;
+                    resize: vertical;
+                    box-sizing: border-box;
+                ">{escaped}</textarea>
+        </div>
+
+        <button
+            onclick="
+                const text = document.getElementById('{text_id}').value;
+                navigator.clipboard.writeText(text).then(() => {{
+                    this.innerText = '복사 완료';
+                    setTimeout(() => this.innerText = '복사하기', 1200);
+                }}).catch(() => {{
+                    this.innerText = '복사 실패';
+                    setTimeout(() => this.innerText = '복사하기', 1200);
+                }});
+            "
+            style="
+                width: 100%;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 10px 16px;
+                font-size: 14px;
+                font-weight: 700;
+                cursor: pointer;
+                margin-top: 6px;
+                margin-bottom: 6px;
+            "
+        >
+            복사하기
+        </button>
+        """,
+        unsafe_allow_html=True
     )
 
 def build_prompt_pack(summary, due_date, tasks, deliverables, warnings):
