@@ -124,15 +124,44 @@ st.markdown("""
 
 # ── 헤더 ────────────────────────────────────────────────────
 st.markdown("""
-<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-            padding:40px 48px; border-radius:20px; margin-bottom:28px;
-            text-align:center; box-shadow:0 10px 40px rgba(102,126,234,0.35);">
-  <div style="font-size:42px; font-weight:900; color:white;">
-    📋 과제 공지 분석기
-  </div>
-  <div style="font-size:18px; color:rgba(255,255,255,0.92); margin-top:10px;">
-    과제 공지문을 붙여넣거나 캡처 이미지를 올려주세요
-  </div>
+<style>
+.hero-box {
+    background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+    padding: 40px 48px;
+    border-radius: 20px;
+    margin-bottom: 28px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(102,126,234,0.35);
+}
+.hero-title {
+    font-size: 42px;
+    font-weight: 900;
+    color: white;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.hero-sub {
+    font-size: 18px;
+    color: rgba(255,255,255,0.92);
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .hero-box {
+        padding: 28px 20px;
+    }
+    .hero-title {
+        font-size: 28px;
+    }
+    .hero-sub {
+        font-size: 15px;
+    }
+}
+</style>
+
+<div class="hero-box">
+  <div class="hero-title">📋 과제 공지 분석기</div>
+  <div class="hero-sub">과제 공지문을 붙여넣거나 캡처 이미지를 올려주세요</div>
 </div>
 """, unsafe_allow_html=True)
 
