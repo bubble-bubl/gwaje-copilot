@@ -333,8 +333,8 @@ if st.button("🔍 분석하기", use_container_width=True):
 
                 if not parsed:
                     st.error("응답 파싱에 실패했습니다. 다시 시도해 주세요.")
-                    with st.expander("디버깅용 원본 응답 보기"):
-                        st.code(raw_text, language=None)
+                    st.markdown("### 디버깅용 원본 응답")
+                    st.code(raw_text, language=None)
                     log_data(log_input, raw_text, input_type=input_type_for_db)
                 else:
                     summary = get_value(parsed, "summary")
