@@ -263,6 +263,84 @@ def safe_json_parse(text: str):
         return None
 
 
+def parse_korean_due_date(due_date_str):
+    if not due_date_str or "확인" in due_date_str or "없" in due_date_str:
+        return None
+
+    try:
+        pattern = r"(\d{4})?\s*년?\s*(\d{1,2})\s*[월/]\s*(\d{1,2})\s*일?\s*(\d{1,2}:\d{2})?"
+        m = re.search(pattern, due_date_str)
+        if not m:
+            return None
+
+        year = int(m.group(1)) if m.group(1) else datetime.now().year
+        month = int(m.group(2))
+        day = int(m.group(3))
+        time_part = m.group(4) or "23:59"
+        hour, minute = map(int, time_part.split(":"))
+
+        dt = datetime(year, month, day, hour, minute)
+
+        # 연도 생략 시 6개월 이상 과거면 다음 해로 보정 (12월→1월 케이스)
+        if not m.group(1):
+            from datetime import timedelta
+            if datetime.now() - dt > timedelta(days=180):
+                dt = dt.replace(year=dt.year + 1)
+
+        return dt
+    except Exception:
+        return None
+
+
+def generate_ics(event_dt, title, description):
+    from datetime import timedelta
+
+    def ics_escape(text):
+        return (
+            text.replace("\\", "\\\\")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+            .replace("\n", "\\n")
+        )
+
+    dtstart = event_dt.strftime("%Y%m%dT%H%M%S")
+    dtend = (event_dt + timedelta(hours=1)).strftime("%Y%m%dT%H%M%S")
+    dtstamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    uid = f"{event_dt.strftime('%Y%m%d%H%M')}-gwaje@copilot"
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//GwajeCopilot//KR",
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{dtstamp}",
+        f"DTSTART;TZID=Asia/Seoul:{dtstart}",
+        f"DTEND;TZID=Asia/Seoul:{dtend}",
+        f"SUMMARY:{ics_escape(title)}",
+        f"DESCRIPTION:{ics_escape(description)}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+    return "\r\n".join(lines).encode("utf-8")
+
+
+def build_google_calendar_url(event_dt, title, description):
+    from datetime import timedelta
+    import urllib.parse
+
+    dtstart = event_dt.strftime("%Y%m%dT%H%M%S")
+    dtend = (event_dt + timedelta(hours=1)).strftime("%Y%m%dT%H%M%S")
+    params = {
+        "action": "TEMPLATE",
+        "text": title,
+        "dates": f"{dtstart}/{dtend}",
+        "details": description,
+        "ctz": "Asia/Seoul",
+    }
+    return "https://www.google.com/calendar/render?" + urllib.parse.urlencode(params)
+
+
 def normalize_list(value):
     if isinstance(value, list):
         return [str(v).strip() for v in value if str(v).strip()]
@@ -827,6 +905,39 @@ if st.session_state.analysis_result:
 
     with st.expander("🗓️ 일정 등록용 문구", expanded=False):
         read_only_box(calendar_text, height=120, key_suffix="calendar")
+
+        parsed_dt = parse_korean_due_date(due_date)
+        if parsed_dt:
+            desc_parts = [f"[요약] {summary}"]
+            if tasks:
+                desc_parts.append("[할 일] " + ", ".join(tasks))
+            if deliverables:
+                desc_parts.append("[제출물] " + ", ".join(deliverables))
+            if warnings:
+                desc_parts.append("[주의] " + ", ".join(warnings))
+            ics_description = "\n".join(desc_parts)
+
+            ics_data = generate_ics(parsed_dt, calendar_text, ics_description)
+            filename = f"과제_{parsed_dt.strftime('%m%d')}.ics"
+            gcal_url = build_google_calendar_url(parsed_dt, calendar_text, ics_description)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="📥 캘린더 파일 (.ics)",
+                    data=ics_data,
+                    file_name=filename,
+                    mime="text/calendar",
+                    use_container_width=True,
+                )
+            with col2:
+                st.link_button(
+                    "📅 구글 캘린더에 추가",
+                    gcal_url,
+                    use_container_width=True,
+                )
+        else:
+            st.caption("⚠️ 마감일을 인식할 수 없어 캘린더 파일을 생성할 수 없습니다.")
 
     with st.expander("📄 원본 JSON 보기", expanded=False):
         st.code(json.dumps(raw_json, ensure_ascii=False, indent=2), language="json")
