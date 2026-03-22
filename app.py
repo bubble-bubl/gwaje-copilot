@@ -921,21 +921,45 @@ if st.session_state.analysis_result:
             filename = f"과제_{parsed_dt.strftime('%m%d')}.ics"
             gcal_url = build_google_calendar_url(parsed_dt, calendar_text, ics_description)
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="📥 캘린더 파일 (.ics)",
-                    data=ics_data,
-                    file_name=filename,
-                    mime="text/calendar",
-                    use_container_width=True,
-                )
-            with col2:
-                st.link_button(
-                    "📅 구글 캘린더에 추가",
-                    gcal_url,
-                    use_container_width=True,
-                )
+            import base64
+            ics_b64 = base64.b64encode(ics_data if isinstance(ics_data, bytes) else ics_data.encode()).decode()
+            btn_html = f"""
+<style>
+  .cal-btn-wrap {{
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }}
+  .cal-btn {{
+    flex: 1;
+    display: inline-block;
+    padding: 10px 0;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    cursor: pointer;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }}
+  .cal-btn:hover {{
+    opacity: 0.88;
+  }}
+</style>
+<div class="cal-btn-wrap">
+  <a class="cal-btn"
+     href="data:text/calendar;base64,{ics_b64}"
+     download="{filename}">📥 캘린더 파일 (.ics)</a>
+  <a class="cal-btn"
+     href="{gcal_url}"
+     target="_blank"
+     rel="noopener noreferrer">📅 구글 캘린더에 추가</a>
+</div>
+"""
+            components.html(btn_html, height=60)
         else:
             st.caption("⚠️ 마감일을 인식할 수 없어 캘린더 파일을 생성할 수 없습니다.")
 
