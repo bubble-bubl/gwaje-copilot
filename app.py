@@ -308,7 +308,7 @@ def parse_korean_due_date(due_date_str):
             return datetime(target_date.year, target_date.month, target_date.day, hour, minute)
 
         # ── 2) 날짜 직접 표기 처리 ("6월 22일", "2026.6.22", 등) ──
-        pattern = r"(\d{4})?\s*[년.]?\s*(\d{1,2})\s*[월/.]\s*(\d{1,2})\s*[일.]?\s*(?:오전|오후)?\s*(\d{1,2}:\d{2})?"
+        pattern = r"(\d{4})?\s*[년.]?\s*(\d{1,2})\s*[월/.]\s*(\d{1,2})\s*[일.]?"
         m = re.search(pattern, due_date_str)
         if not m:
             return None
@@ -316,13 +316,7 @@ def parse_korean_due_date(due_date_str):
         year = int(m.group(1)) if m.group(1) else datetime.now().year
         month = int(m.group(2))
         day = int(m.group(3))
-        time_part = m.group(4) or "23:59"
-        hour, minute = map(int, time_part.split(":"))
-
-        if is_pm and hour != 12:
-            hour += 12
-        elif is_am and hour == 12:
-            hour = 0
+        hour, minute = extract_time(due_date_str)  # 시간은 헬퍼로 통일
 
         dt = datetime(year, month, day, hour, minute)
 
@@ -914,10 +908,7 @@ if st.session_state.analysis_result:
         st.markdown(summary)
 
     with st.expander("⏰ 마감일", expanded=False):
-        st.markdown(
-            f'<div style="padding: 2px 4px; word-break: keep-all; overflow-wrap: break-word;">{due_date}</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(due_date)
 
     with st.expander("✅ 해야 할 일", expanded=False):
         if tasks:
