@@ -267,8 +267,48 @@ def parse_korean_due_date(due_date_str):
     if not due_date_str or "확인" in due_date_str or "없" in due_date_str:
         return None
 
+    from datetime import timedelta
+
     try:
-        pattern = r"(\d{4})?\s*년?\s*(\d{1,2})\s*[월/]\s*(\d{1,2})\s*일?\s*(\d{1,2}:\d{2})?"
+        is_pm = "오후" in due_date_str
+        is_am = "오전" in due_date_str
+
+        # ── 시간 파싱 헬퍼 ──────────────────────────────────────
+        def extract_time(text):
+            """문자열에서 시간 추출. '21시', '21:30', '오후 6:00' 형태 처리."""
+            t = re.search(r"(\d{1,2}):(\d{2})", text)
+            if t:
+                h, m = int(t.group(1)), int(t.group(2))
+            else:
+                t2 = re.search(r"(\d{1,2})\s*시", text)
+                h, m = (int(t2.group(1)), 0) if t2 else (23, 59)
+            if is_pm and h != 12:
+                h += 12
+            elif is_am and h == 12:
+                h = 0
+            return h, m
+
+        # ── 1) 요일 표현 처리 ("수요일 21시", "다음 주 금요일") ──
+        WEEKDAY_KR = {"월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6}
+        weekday_m = re.search(r"([월화수목금토일])요일", due_date_str)
+        if weekday_m:
+            target_wd = WEEKDAY_KR[weekday_m.group(1)]
+            today = datetime.now()
+            days_ahead = target_wd - today.weekday()
+            # "다음 주" 명시 → 무조건 다음 주
+            if "다음" in due_date_str:
+                if days_ahead <= 0:
+                    days_ahead += 7
+            else:
+                # 이미 지난 요일이면 다음 주로
+                if days_ahead < 0:
+                    days_ahead += 7
+            target_date = today + timedelta(days=days_ahead)
+            hour, minute = extract_time(due_date_str)
+            return datetime(target_date.year, target_date.month, target_date.day, hour, minute)
+
+        # ── 2) 날짜 직접 표기 처리 ("6월 22일", "2026.6.22", 등) ──
+        pattern = r"(\d{4})?\s*[년.]?\s*(\d{1,2})\s*[월/.]\s*(\d{1,2})\s*[일.]?\s*(?:오전|오후)?\s*(\d{1,2}:\d{2})?"
         m = re.search(pattern, due_date_str)
         if not m:
             return None
@@ -279,11 +319,15 @@ def parse_korean_due_date(due_date_str):
         time_part = m.group(4) or "23:59"
         hour, minute = map(int, time_part.split(":"))
 
+        if is_pm and hour != 12:
+            hour += 12
+        elif is_am and hour == 12:
+            hour = 0
+
         dt = datetime(year, month, day, hour, minute)
 
-        # 연도 생략 시 6개월 이상 과거면 다음 해로 보정 (12월→1월 케이스)
+        # 연도 생략 시 6개월 이상 과거면 다음 해로 보정
         if not m.group(1):
-            from datetime import timedelta
             if datetime.now() - dt > timedelta(days=180):
                 dt = dt.replace(year=dt.year + 1)
 
@@ -870,7 +914,10 @@ if st.session_state.analysis_result:
         st.markdown(summary)
 
     with st.expander("⏰ 마감일", expanded=False):
-        st.markdown(due_date)
+        st.markdown(
+            f'<div style="padding: 2px 4px; word-break: keep-all; overflow-wrap: break-word;">{due_date}</div>',
+            unsafe_allow_html=True,
+        )
 
     with st.expander("✅ 해야 할 일", expanded=False):
         if tasks:
