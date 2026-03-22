@@ -297,13 +297,14 @@ def read_only_box(value, height=220, key_suffix="default"):
                 height: {height}px;
                 padding: 14px;
                 font-size: 15px;
-                line-height: 1.6;
+                line-height: 1.7;
                 color: #1a1a2e;
                 background: #ffffff;
-                border: 1px solid #d9dce8;
+                border: 1px solid rgba(102,126,234,0.25);
                 border-radius: 12px;
                 resize: vertical;
                 box-sizing: border-box;
+                box-shadow: inset 0 2px 6px rgba(0,0,0,0.05), 0 1px 4px rgba(102,126,234,0.08);
             ">{escaped}</textarea>
     </div>
 
@@ -318,18 +319,23 @@ def read_only_box(value, height=220, key_suffix="default"):
                 setTimeout(() => this.innerText = '복사하기', 1200);
             }});
         "
+        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 18px rgba(102,126,234,0.48)';"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px rgba(102,126,234,0.38), 0 1px 3px rgba(0,0,0,0.10)';"
         style="
             width: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
+            border-bottom: 2px solid rgba(80,40,140,0.25);
             border-radius: 10px;
-            padding: 10px 16px;
+            padding: 11px 16px;
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             margin-top: 6px;
             margin-bottom: 6px;
+            box-shadow: 0 4px 14px rgba(102,126,234,0.38), 0 1px 3px rgba(0,0,0,0.10);
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
         "
     >
         복사하기
@@ -464,18 +470,23 @@ st.set_page_config(
 # ── 스타일 ──────────────────────────────────────────────────
 st.markdown("""
 <style>
+    /* ── 텍스트 기본 ── */
     .stMarkdown p, .stMarkdown li, .stMarkdown span {
         word-break: keep-all !important;
         overflow-wrap: break-word !important;
-        line-height: 1.8 !important;
+        line-height: 1.85 !important;
     }
 
+    /* ── 텍스트 영역: 안쪽 깊이감 ── */
     .stTextArea textarea {
         font-size: 16px !important;
-        line-height: 1.6 !important;
+        line-height: 1.7 !important;
         background: #ffffff !important;
         color: #1a1a2e !important;
         border-radius: 12px !important;
+        border: 1px solid rgba(102,126,234,0.25) !important;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.05),
+                    0 1px 4px rgba(102,126,234,0.08) !important;
     }
 
     header[data-testid="stHeader"] { display: none !important; }
@@ -490,24 +501,43 @@ st.markdown("""
         color: #1a1a2e !important;
     }
 
+    /* ── 분석 버튼: 살짝 떠 있는 깊이감 ── */
     div.stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: white !important;
         font-size: 18px !important;
         font-weight: 800 !important;
-        padding: 0.8rem 2rem !important;
+        padding: 0.85rem 2rem !important;
         border: none !important;
         border-radius: 14px !important;
         width: 100% !important;
+        box-shadow: 0 4px 16px rgba(102,126,234,0.38),
+                    0 1px 4px rgba(0,0,0,0.10) !important;
+        border-bottom: 2px solid rgba(80,40,140,0.25) !important;
+        transition: transform 0.12s ease, box-shadow 0.12s ease !important;
     }
 
+    div.stButton > button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 22px rgba(102,126,234,0.48),
+                    0 2px 6px rgba(0,0,0,0.12) !important;
+    }
+
+    div.stButton > button:active {
+        transform: translateY(0px) !important;
+        box-shadow: 0 2px 8px rgba(102,126,234,0.28) !important;
+    }
+
+    /* ── 히어로 박스: 아래 테두리로 두께감 ── */
     .hero-box {
-        background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 40px 48px;
         border-radius: 20px;
         margin-bottom: 28px;
         text-align: center;
-        box-shadow: 0 10px 40px rgba(102,126,234,0.35);
+        box-shadow: 0 8px 32px rgba(102,126,234,0.38),
+                    0 2px 8px rgba(0,0,0,0.10);
+        border-bottom: 3px solid rgba(80,40,140,0.30);
     }
 
     .hero-title {
@@ -522,24 +552,38 @@ st.markdown("""
         font-size: 17px;
         color: rgba(255,255,255,0.92);
         margin-top: 10px;
-        line-height: 1.55;
+        line-height: 1.6;
         text-align: center;
+    }
+
+    /* ── Expander: 카드처럼 한 층 올라온 느낌 ── */
+    div[data-testid="stExpander"] {
+        box-shadow: 0 2px 10px rgba(102,126,234,0.12),
+                    0 1px 3px rgba(0,0,0,0.06) !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(102,126,234,0.16) !important;
+        margin-bottom: 10px !important;
+        background: white !important;
+        overflow: hidden !important;
     }
 
     div[data-testid="stExpander"] details summary {
         color: #1a1a2e !important;
         background: white !important;
         border-radius: 12px !important;
+        padding: 14px 16px !important;
     }
 
     div[data-testid="stExpander"] details[open] summary {
         color: #1a1a2e !important;
         background: white !important;
+        border-bottom: 1px solid rgba(102,126,234,0.12) !important;
+        border-radius: 12px 12px 0 0 !important;
     }
 
     div[data-testid="stExpander"] details summary:hover {
         color: #1a1a2e !important;
-        background: #f8f9ff !important;
+        background: #f6f7ff !important;
     }
 
     div[data-testid="stExpander"] details summary p {
@@ -547,9 +591,18 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
+    /* ── Expander 내부 패딩 ── */
+    div[data-testid="stExpander"] details > div {
+        padding: 12px 16px !important;
+    }
+
+    /* ── 셀렉트박스 ── */
     div[data-baseweb="select"] > div {
         background: white !important;
         color: #1a1a2e !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 4px rgba(102,126,234,0.10) !important;
+        border: 1px solid rgba(102,126,234,0.20) !important;
     }
 
     div[data-baseweb="select"] span {
@@ -561,17 +614,36 @@ st.markdown("""
         background: white !important;
     }
 
+    /* ── 구분선 정돈 ── */
+    hr {
+        border: none !important;
+        border-top: 1px solid rgba(102,126,234,0.15) !important;
+        margin: 24px 0 !important;
+    }
+
+    /* ── 모바일 최적화 ── */
     @media (max-width: 768px) {
         .hero-box {
-            padding: 28px 20px;
+            padding: 26px 18px;
             border-radius: 18px;
         }
         .hero-title {
-            font-size: 28px;
+            font-size: 26px;
         }
         .hero-sub {
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.55;
+        }
+        .stMarkdown p, .stMarkdown li {
+            font-size: 15px !important;
+            line-height: 1.8 !important;
+        }
+        div[data-testid="stExpander"] details > div {
+            padding: 10px 12px !important;
+        }
+        div.stButton > button {
+            font-size: 16px !important;
+            padding: 0.75rem 1.5rem !important;
         }
     }
 </style>
